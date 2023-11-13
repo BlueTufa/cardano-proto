@@ -22,7 +22,7 @@ async fn main() {
     match validate_and_download_assets(&args).await {
         Ok(()) => log::debug!("Succeeded"),
         Err(err) => {
-            log::error!("An error occurred during the operation: {:?}", err);
+            log::error!("An error occurred during the operation: {}", err);
         }
     }
 }
@@ -44,6 +44,8 @@ async fn validate_and_download_assets(args: &Args) -> Result<(), Box<dyn Error>>
     let _ = futures::stream::iter(assets_policy_by_id)
         .for_each(|a| async move {
             let image = collect_cover_images(&a.asset).await.unwrap();
+
+            // this section needs refactored into a 'download' fn
             let ipfs_addr = image.src.chars().skip("ipfs://".len()).collect::<String>();
             let url = format!("https://gateway.pinata.cloud/ipfs/{}", ipfs_addr);
             // TODO: support multiple content types based on image.media_type.  Assume png for now.

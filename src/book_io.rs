@@ -20,8 +20,8 @@ impl Collection {
     /// * `policy_id` - A policy id, as string, to validate.
     /// If the policy_id is a valid Book.io collection, return the collection.
     pub async fn validate(policy_id: &str) -> Result<Collection, Error> {
-        // I couldn't find any documentation on this, but this call would be much more efficient
-        // if there were a path param or query string that accepts a collection id
+        // I couldn't find any documentation on this.  This call would be much more efficient
+        // if there were a path param or query string that accepts a collection id.
         let resp = get::<Response>("https://api.book.io/api/v0/collections", None).await?;
         // case sensitivity and leading / trailing whitespace could be a concern here
         let validated = resp

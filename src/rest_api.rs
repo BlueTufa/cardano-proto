@@ -18,8 +18,10 @@ where
     } else {
         reqwest::Client::new().get(url)
     };
+    let response = client.send().await?;
     // need to support multiple HTTP status codes here
-    Ok(client.send().await?.json::<T>().await?)
+    assert!(response.status().is_success());
+    Ok(response.json::<T>().await?)
 }
 
 pub async fn get_bytes_to_file(url: &str, output_path: PathBuf) -> Result<(), Error> {
