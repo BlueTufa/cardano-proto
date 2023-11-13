@@ -2,7 +2,7 @@ use reqwest::header::HeaderMap;
 use reqwest::Error;
 use serde::de::DeserializeOwned;
 use std::fs::File;
-use std::io::{copy, Cursor, Read};
+use std::io::{copy, Cursor};
 use std::path::PathBuf;
 
 /// A Rest API helper which simplifies the deserialization from JSON.

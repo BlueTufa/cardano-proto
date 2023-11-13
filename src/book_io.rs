@@ -32,5 +32,3 @@ impl Collection {
         Ok(validated.to_owned())
     }
 }
-
-// TODO: Test here

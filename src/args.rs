@@ -3,9 +3,6 @@ use clap::Parser;
 #[derive(Parser, Clone, Debug)]
 #[command(author, version, about, long_about)]
 pub struct Args {
-    #[arg(short('k'), long, help = "The Blockfrost project_id key, as a string.")]
-    pub key: String,
-
     #[arg(short('p'), long, help = "The Cardano policy ID, as a string.")]
     pub policy_id: String,
 

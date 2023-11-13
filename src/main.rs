@@ -39,6 +39,8 @@ async fn validate_and_download_assets(args: &Args) -> Result<(), Box<dyn Error>>
     let assets_policy_by_id = get_assets_by_policy_id(&args.policy_id).await?;
     log::debug!("Found {} assets for policy id.", assets_policy_by_id.len());
 
+    // The preference would be to use a .map here and return a Vec of cover images.  The syntax
+    // wasn't quite working with futures::stream, so I opted to temporarily
     let _ = futures::stream::iter(assets_policy_by_id)
         .for_each(|a| async move {
             let image = collect_cover_images(&a.asset).await.unwrap();
