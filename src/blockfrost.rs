@@ -21,10 +21,10 @@ pub fn build_api() -> blockfrost::Result<BlockFrostApi> {
     Ok(api)
 }
 
-pub async fn collect_cover_images(asset: &str) -> Result<File, &str> {
+pub async fn collect_cover_images(asset: &str) -> Result<File, String> {
     let api = build_api().expect("Api was not initialized");
-    let asset = api.assets_by_id(&asset).await.expect("Unable to retrieve asset");
-    if let Some(metadata) = asset.onchain_metadata {
+    let asset_details = api.assets_by_id(&asset).await.expect("Unable to retrieve asset");
+    if let Some(metadata) = asset_details.onchain_metadata {
         if let Some(cover) = metadata.get("files") {
             let files: Vec<File> = serde_json::from_value(cover.to_owned()).unwrap();
             if let Some(file) = files.iter().find(|c| c.name == "High-Res Cover Image") {
@@ -32,7 +32,7 @@ pub async fn collect_cover_images(asset: &str) -> Result<File, &str> {
             }
         }
     }
-    Err("Unable to retrieve asset")
+    Err(format!("Unable to retrieve asset: {:?}", asset))
 }
 
 pub async fn get_assets_by_policy_id(policy_id: &str) -> Result<Vec<AssetPolicy>, Error> {

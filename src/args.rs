@@ -8,7 +8,4 @@ pub struct Args {
 
     #[arg(short('d'), long, help = "The output directory for the assets.")]
     pub output_dir: String,
-
-    #[arg(short('o'), long("overwrite"), help = "Over-write existing files, if they exist.")]
-    pub overwrite: Option<bool>,
 }

@@ -1,9 +1,11 @@
 use crate::args::Args;
-use crate::blockfrost::{collect_cover_images, get_assets_by_policy_id};
+use crate::blockfrost::{collect_cover_images, get_assets_by_policy_id, File};
 use crate::rest_api::get_bytes_to_file;
 use clap::Parser;
+use fs::create_dir_all;
 use futures::prelude::*;
 use std::error::Error;
+use std::fs;
 use std::path::Path;
 
 mod args;
@@ -20,7 +22,7 @@ async fn main() {
     log::debug!("Command line initialized with the following args: {:?}", args);
 
     match validate_and_download_assets(&args).await {
-        Ok(()) => log::debug!("Succeeded"),
+        Ok(()) => log::info!("Succeeded."),
         Err(err) => {
             log::error!("An error occurred during the operation: {}", err);
         }
@@ -40,26 +42,29 @@ async fn validate_and_download_assets(args: &Args) -> Result<(), Box<dyn Error>>
     log::debug!("Found {} assets for policy id.", assets_policy_by_id.len());
 
     // The preference would be to use a .map here and return a Vec of cover images.  The syntax
-    // wasn't quite working with futures::stream, so I opted to temporarily
+    // wasn't quite working with futures::stream, so this is a temporary solution.
     let _ = futures::stream::iter(assets_policy_by_id)
         .for_each(|a| async move {
             let image = collect_cover_images(&a.asset).await.unwrap();
-
-            // this section needs refactored into a 'download' fn
-            let ipfs_addr = image.src.chars().skip("ipfs://".len()).collect::<String>();
-            let url = format!("https://gateway.pinata.cloud/ipfs/{}", ipfs_addr);
-            // TODO: support multiple content types based on image.media_type.  Assume png for now.
-            let output_path = Path::new(&args.output_dir)
-                .join(Path::new(&ipfs_addr))
-                .with_extension("png");
-            // TODO: A bug here.  Needs to stop after finding 10 unique covers
-            get_bytes_to_file(&url, output_path)
-                .await
-                .expect("Unable to download file");
-
-            log::debug!("{:?}", image);
+            download(&args, &image).await.expect("Unable to download file.");
         })
         .await;
+    Ok(())
+}
 
+async fn download(args: &Args, file: &File) -> Result<(), Box<dyn Error>> {
+    let ipfs_addr = file.src.chars().skip("ipfs://".len()).collect::<String>();
+    // I couldn't get a token for bitfrost IPFS, so I'm using Pinata as a quick workaround.
+    let url = format!("https://gateway.pinata.cloud/ipfs/{}", ipfs_addr);
+    // create the directory if it does not exist.
+    create_dir_all(Path::new(&args.output_dir)).expect("Unable to create output directory.");
+    // TODO: support multiple content types based on image.media_type.  Assume png for now.
+    let output_path = Path::new(&args.output_dir)
+        .join(Path::new(&ipfs_addr))
+        .with_extension("png");
+    // TODO: A bug here.  Needs to stop after finding 10 unique covers
+    get_bytes_to_file(&url, output_path)
+        .await
+        .expect("Unable to download file");
     Ok(())
 }
