@@ -24,7 +24,6 @@ cargo run -- -p af3566f6e17b0d6a829f673c99a2f4c782bea73b04d8e1cc63db01c6 -d $(pw
 - [x] Validate the Policy ID against book.io collections
   * Right now, it panics when validation fails 
 - [x] Download the "High-res cover image" from 10 books
-  * The logic to limit the download to 10 unique books isn't built out yet.
 - [x] Store images in the specified output directory
 - [x] The application must be idempotent
 
