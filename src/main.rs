@@ -3,7 +3,7 @@ use crate::blockfrost::{collect_cover_images, get_assets_by_policy_id, File};
 use crate::rest_api::get_bytes_to_file;
 use clap::Parser;
 use fs::create_dir_all;
-use futures::prelude::*;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -31,9 +31,10 @@ async fn main() {
 
 async fn validate_and_download_assets(args: &Args) -> Result<(), Box<dyn Error>> {
     // validate that the policy is a valid book.io collection
-    let collection = book_io::Collection::validate(&args.policy_id)
-        .await
-        .expect("Collection is invalid.");
+    let collection = book_io::Collection::validate(&args.policy_id).await;
+    if let Err(coll) = collection {
+        return Err(Box::try_from(coll).unwrap());
+    }
     log::debug!("Book.io collection was found: {:?}", collection);
 
     // In this example, we only need 10 unique images, so a default page size of 100 is likely not an issue.
@@ -41,14 +42,24 @@ async fn validate_and_download_assets(args: &Args) -> Result<(), Box<dyn Error>>
     let assets_policy_by_id = get_assets_by_policy_id(&args.policy_id).await?;
     log::debug!("Found {} assets for policy id.", assets_policy_by_id.len());
 
+    let mut downloaded_set: HashSet<String> = HashSet::new();
     // The preference would be to use a .map here and return a Vec of cover images.  The syntax
     // wasn't quite working with futures::stream, so this is a temporary solution.
-    let _ = futures::stream::iter(assets_policy_by_id)
-        .for_each(|a| async move {
-            let image = collect_cover_images(&a.asset).await.unwrap();
-            download(&args, &image).await.expect("Unable to download file.");
-        })
-        .await;
+    for asset in assets_policy_by_id {
+        match collect_cover_images(&asset.asset).await {
+            Ok(image) => {
+                if !downloaded_set.contains(&image.src) {
+                    download(&args, &image).await.expect("Unable to download file.");
+                    log::debug!("Downloaded {}", &image.src);
+                    downloaded_set.insert(image.src);
+                }
+            }
+            Err(msg) => log::warn!("The asset does not contain high-res image metadata.  {}", msg),
+        }
+        if downloaded_set.len() == 10 {
+            break;
+        }
+    }
     Ok(())
 }
 
@@ -62,9 +73,8 @@ async fn download(args: &Args, file: &File) -> Result<(), Box<dyn Error>> {
     let output_path = Path::new(&args.output_dir)
         .join(Path::new(&ipfs_addr))
         .with_extension("png");
-    // TODO: A bug here.  Needs to stop after finding 10 unique covers
-    get_bytes_to_file(&url, output_path)
-        .await
-        .expect("Unable to download file");
+    if let Err(err) = get_bytes_to_file(&url, output_path).await {
+        log::warn!("Unable to download file.  Reason: {}", err);
+    }
     Ok(())
 }

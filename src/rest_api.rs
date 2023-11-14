@@ -18,10 +18,12 @@ where
     } else {
         reqwest::Client::new().get(url)
     };
-    let response = client.send().await?;
-    // need to support multiple HTTP status codes here
-    assert!(response.status().is_success());
-    Ok(response.json::<T>().await?)
+    let resp = client.send().await?;
+    if !resp.status().is_success() {
+        log::warn!("Url {} returned HTTP status: {}", url, resp.status());
+        return Err(resp.error_for_status_ref().err().unwrap());
+    }
+    Ok(resp.json::<T>().await?)
 }
 
 pub async fn get_bytes_to_file(url: &str, output_path: PathBuf) -> Result<(), Error> {
@@ -30,7 +32,10 @@ pub async fn get_bytes_to_file(url: &str, output_path: PathBuf) -> Result<(), Er
         return Ok(());
     }
     let resp = reqwest::Client::new().get(url).send().await?;
-    assert!(resp.status().is_success());
+    if !resp.status().is_success() {
+        log::warn!("Url {} returned HTTP status: {}", url, resp.status());
+        return Err(resp.error_for_status_ref().err().unwrap());
+    }
     let mut content = Cursor::new(resp.bytes().await?);
     let mut dest = { File::create(output_path).expect("File should not exist") };
     copy(&mut content, &mut dest).expect("Unable to write to file");
